@@ -25,6 +25,11 @@ embedding_model = OpenAIEmbeddings(
 )
 
 
+def get_embedding(text: str) -> List[float]:
+    """Generate embedding for text using configured model."""
+    return embedding_model.embed_query(text)
+
+
 def ingest_pdf(file_path: str, session: Session = None):
     """
     Ingest a PDF file into the database.

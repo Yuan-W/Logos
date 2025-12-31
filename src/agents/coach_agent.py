@@ -9,12 +9,13 @@ Roles:
 - Coach: Strategic, action-oriented, focus on goals
 """
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional, Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models import BaseChatModel
 from langgraph.graph import StateGraph, END
+from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
@@ -183,7 +184,7 @@ def create_safety_guard():
     return safety_guard
 
 
-def create_responder(llm: BaseChatModel):
+def create_responder(llm: BaseChatModel, glossary_context: str = ""):
     """Node: Generate advice based on role."""
     
     def responder(state: CoachState) -> CoachState:
@@ -205,6 +206,9 @@ def create_responder(llm: BaseChatModel):
             sys_template = COACH_PROMPT
         else:
             sys_template = PSYCHOLOGIST_PROMPT
+            
+        if glossary_context:
+            sys_template += f"\n\n{glossary_context}"
             
         prompt = sys_template.format(
             profile_context=context,
@@ -306,7 +310,7 @@ def route_safety(state: CoachState) -> Literal["responder", "crisis_response"]:
 # Graph Builder
 # =============================================================================
 
-def build_coach_agent(llm: BaseChatModel, session: Session) -> StateGraph:
+def build_coach_agent(llm: BaseChatModel, session: Session, checkpointer: Optional[Any] = None, glossary_context: str = "") -> CompiledStateGraph:
     """
     Build Coach Agent Graph.
     
@@ -320,7 +324,7 @@ def build_coach_agent(llm: BaseChatModel, session: Session) -> StateGraph:
     
     loader = create_profile_loader(session)
     guard = create_safety_guard()
-    responder = create_responder(llm)
+    responder = create_responder(llm, glossary_context)
     profiler = create_profiler(llm, session)
     
     graph = StateGraph(CoachState)
@@ -359,4 +363,4 @@ def build_coach_agent(llm: BaseChatModel, session: Session) -> StateGraph:
     graph.add_edge("profiler", END)
     graph.add_edge("crisis", END)
     
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)

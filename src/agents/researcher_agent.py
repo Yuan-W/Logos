@@ -7,7 +7,7 @@ Search -> Expand -> Retrieve -> Synthesize
 """
 
 import os
-from typing import List, Annotated
+from typing import List, Annotated, Optional, Any
 from typing_extensions import TypedDict
 
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
@@ -16,6 +16,7 @@ from langchain_core.language_models import BaseChatModel
 from langchain_core.documents import Document as LangChainDocs
 from langchain_openai import OpenAIEmbeddings
 from langgraph.graph import StateGraph, END
+from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
@@ -188,7 +189,7 @@ IMPORTANT: Please answer the user's question in CHINESE (Simplified Chinese).
 # Graph Builder
 # =============================================================================
 
-def build_researcher_agent(llm: BaseChatModel, session: Session) -> StateGraph:
+def build_researcher_agent(llm: BaseChatModel, session: Session, checkpointer: Optional[Any] = None) -> CompiledStateGraph:
     """
     Build the Researcher Agent graph.
     
@@ -216,4 +217,4 @@ def build_researcher_agent(llm: BaseChatModel, session: Session) -> StateGraph:
     graph.add_edge("rerank", "synthesize")
     graph.add_edge("synthesize", END)
     
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)

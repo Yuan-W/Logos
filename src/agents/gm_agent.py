@@ -11,12 +11,13 @@ Nodes:
 5. Saver - Commits updated state to database
 """
 
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Optional, Any
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.language_models import BaseChatModel
 from langgraph.graph import StateGraph, END
+from langgraph.graph.state import CompiledStateGraph
 from langgraph.graph.message import add_messages
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -24,6 +25,7 @@ from sqlalchemy.orm import Session
 from src.graph.state import GameState
 from src.database.models import GameState as GameStateDB
 from src.agents.tools import dice_roller, create_rule_lookup
+from src.agents.common.summarizer import create_summarizer
 
 
 # =============================================================================
@@ -55,6 +57,11 @@ When describing actions:
 4. End with a hook or question to prompt next action
 
 Current game state will be provided. Stay in character as the GM.
+
+PREVIOUS SUMMARY:
+{conversation_summary}
+
+{glossary_context}
 
 IMPORTANT: You MUST generate the narrative in CHINESE (Simplified Chinese).
 保持中文回复。使用中文描述场景、动作和后果。但是游戏术语（如 "Blades in the Dark", "Action Roll"）可以保留英文或说明。"""
@@ -169,7 +176,7 @@ def create_action_handler(llm: BaseChatModel, session: Session):
     return action_handler
 
 
-def create_narrator(llm: BaseChatModel):
+def create_narrator(llm: BaseChatModel, glossary_context: str = ""):
     """Create Narrator node for story generation."""
     
     def narrator(state: GameState) -> GameState:
@@ -190,7 +197,10 @@ RULE CHECK: {rule_result}
         
         # Create prompt with system message and context
         prompt_messages = [
-            SystemMessage(content=NARRATOR_SYSTEM_PROMPT),
+            SystemMessage(content=NARRATOR_SYSTEM_PROMPT.format(
+                conversation_summary=state.conversation_summary,
+                glossary_context=glossary_context
+            )),
             SystemMessage(content=f"GAME CONTEXT:\n{context}"),
             *messages
         ]
@@ -256,7 +266,7 @@ def route_by_intent(state: GameState) -> Literal["action_handler", "narrator"]:
 # Graph Builder
 # =============================================================================
 
-def build_gm_agent(llm: BaseChatModel, session: Session) -> StateGraph:
+def build_gm_agent(llm: BaseChatModel, session: Session, checkpointer: Optional[Any] = None, glossary_context: str = "") -> CompiledStateGraph:
     """
     Build the GM Agent graph.
     
@@ -270,8 +280,9 @@ def build_gm_agent(llm: BaseChatModel, session: Session) -> StateGraph:
     state_loader = create_state_loader(session)
     intent_parser = create_intent_parser(llm)
     action_handler = create_action_handler(llm, session)
-    narrator = create_narrator(llm)
+    narrator = create_narrator(llm, glossary_context)
     saver = create_saver(session)
+    summarizer = create_summarizer(llm)
     
     # Build graph
     graph = StateGraph(GameState)
@@ -282,6 +293,7 @@ def build_gm_agent(llm: BaseChatModel, session: Session) -> StateGraph:
     graph.add_node("action_handler", action_handler)
     graph.add_node("narrator", narrator)
     graph.add_node("saver", saver)
+    graph.add_node("summarizer", summarizer)
     
     # Add edges
     graph.set_entry_point("state_loader")
@@ -289,9 +301,10 @@ def build_gm_agent(llm: BaseChatModel, session: Session) -> StateGraph:
     graph.add_conditional_edges("intent_parser", route_by_intent)
     graph.add_edge("action_handler", "narrator")
     graph.add_edge("narrator", "saver")
-    graph.add_edge("saver", END)
+    graph.add_edge("saver", "summarizer")
+    graph.add_edge("summarizer", END)
     
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)
 
 
 # =============================================================================

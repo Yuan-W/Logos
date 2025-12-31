@@ -11,12 +11,13 @@ Nodes:
 5. LoreExtractor: Updates StoryBible with new entities/facts
 """
 
-from typing import Literal, Annotated
+from typing import Literal, Annotated, Optional, Any
 import json
 
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 from langchain_core.language_models import BaseChatModel
 from langgraph.graph import StateGraph, END
+from langgraph.graph.state import CompiledStateGraph
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
@@ -137,7 +138,7 @@ def create_lore_retriever(session: Session):
     return lore_retriever
 
 
-def create_drafter(llm: BaseChatModel):
+def create_drafter(llm: BaseChatModel, glossary_context: str = ""):
     def drafter(state: WriterState) -> WriterState:
         # Determine Role - we'll infer from project_id or metadata, 
         # but for now let's assume "screenwriter" if project_id starts with 'scr', else novelist
@@ -154,6 +155,10 @@ def create_drafter(llm: BaseChatModel):
             
         sys_prompt = SCREENWRITER_PROMPT if role == "screenwriter" else NOVELIST_PROMPT
         
+        # Inject Glossary Context
+        if glossary_context:
+            sys_prompt += f"\n\n{glossary_context}"
+            
         prompt = f"""LORE:\n{state.retrieved_lore}\n\nOUTLINE:\n{state.current_outline}\n\nPREVIOUS FEEDBACK: {state.critique_notes}"""
         
         messages = [
@@ -246,7 +251,7 @@ def create_lore_extractor(llm: BaseChatModel, session: Session):
 # Graph
 # =============================================================================
 
-def build_writer_agent(llm: BaseChatModel, session: Session) -> StateGraph:
+def build_writer_agent(llm: BaseChatModel, session: Session, checkpointer: Optional[Any] = None, glossary_context: str = "") -> CompiledStateGraph:
     """
     Build Writer Agent Graph.
     
@@ -259,7 +264,7 @@ def build_writer_agent(llm: BaseChatModel, session: Session) -> StateGraph:
     graph = StateGraph(WriterState)
     
     graph.add_node("retrieve", create_lore_retriever(session))
-    graph.add_node("draft", create_drafter(llm))
+    graph.add_node("draft", create_drafter(llm, glossary_context))
     graph.add_node("critic", create_critic(llm))
     graph.add_node("revise", create_reviser())
     graph.add_node("extract", create_lore_extractor(llm, session))
@@ -285,4 +290,4 @@ def build_writer_agent(llm: BaseChatModel, session: Session) -> StateGraph:
     graph.add_edge("revise", "draft")
     graph.add_edge("extract", END)
     
-    return graph.compile()
+    return graph.compile(checkpointer=checkpointer)

@@ -306,3 +306,31 @@ class CodeSnippet(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
+
+
+class TermRegistry(Base):
+    """
+    Generic Terminology Registry.
+    Enforces consistent naming across all agents.
+    
+    Scopes:
+    - global:dnd5e (System rules)
+    - project:my_novel (Project specific)
+    - user:preference (User specific overrides)
+    """
+    __tablename__ = "term_registry"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    scope: Mapped[str] = mapped_column(String(64), index=True, nullable=False)
+    term: Mapped[str] = mapped_column(String(128), index=True, nullable=False)
+    definition: Mapped[str] = mapped_column(Text, nullable=False)
+    
+    # Synonyms/Aliases (e.g., ["Dm", "Gamemaster"] for "Game Master")
+    aliases: Mapped[list[str]] = mapped_column(JSONB, default=list)
+    
+    # Semantic search support
+    embedding: Mapped[list[float]] = mapped_column(Vector(3072))
+    
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

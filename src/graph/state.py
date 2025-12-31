@@ -12,6 +12,9 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 
 
+def overwrite(x, y):
+    return y
+
 # =============================================================================
 # Base State
 # =============================================================================
@@ -22,7 +25,8 @@ class BaseState(BaseModel):
     Uses Annotated with add_messages for proper message accumulation in LangGraph.
     """
     messages: Annotated[list[BaseMessage], add_messages] = Field(default_factory=list)
-    user_id: str = Field(default="", description="Current user identifier")
+    user_id: Annotated[str, overwrite] = Field(default="", description="Current user identifier")
+    conversation_summary: Annotated[str, overwrite] = Field(default="", description="Summarized history of older messages")
     
     model_config = {"arbitrary_types_allowed": True}
 
@@ -36,17 +40,17 @@ class GameState(BaseState):
     State for TRPG gameplay agents.
     Tracks dice rolls, rule checks, and player HP.
     """
-    dice_roll_result: int = Field(default=0, description="Last dice roll result")
-    rule_check_result: str = Field(default="", description="Result of rule validation")
-    current_hp: dict[str, int] = Field(
+    dice_roll_result: Annotated[int, overwrite] = Field(default=0, description="Last dice roll result")
+    rule_check_result: Annotated[str, overwrite] = Field(default="", description="Result of rule validation")
+    current_hp: Annotated[dict[str, int], overwrite] = Field(
         default_factory=dict, 
         description="Current HP for all characters: {'player': 25, 'goblin': 10}"
     )
     
     # Extended game context
-    current_scene: str = Field(default="", description="Current scene description")
-    active_npcs: list[str] = Field(default_factory=list, description="NPCs in current scene")
-    pending_actions: list[str] = Field(default_factory=list, description="Actions awaiting resolution")
+    current_scene: Annotated[str, overwrite] = Field(default="", description="Current scene description")
+    active_npcs: Annotated[list[str], overwrite] = Field(default_factory=list, description="NPCs in current scene")
+    pending_actions: Annotated[list[str], overwrite] = Field(default_factory=list, description="Actions awaiting resolution")
 
 
 # =============================================================================
@@ -58,19 +62,19 @@ class ResearchState(BaseState):
     State for research and coding agents.
     Manages search queries, retrieved documents, and draft answers.
     """
-    search_queries: list[str] = Field(
+    search_queries: Annotated[list[str], overwrite] = Field(
         default_factory=list, 
         description="Generated search queries"
     )
-    retrieved_docs: list[Document] = Field(
+    retrieved_docs: Annotated[list[Document], overwrite] = Field(
         default_factory=list, 
         description="Retrieved documents from vector store"
     )
-    draft_answer: str = Field(default="", description="Current draft response")
+    draft_answer: Annotated[str, overwrite] = Field(default="", description="Current draft response")
     
     # Extended research context
-    sources_cited: list[str] = Field(default_factory=list, description="URLs/references cited")
-    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0, description="Answer confidence")
+    sources_cited: Annotated[list[str], overwrite] = Field(default_factory=list, description="URLs/references cited")
+    confidence_score: Annotated[float, overwrite] = Field(default=0.0, ge=0.0, le=1.0, description="Answer confidence")
 
 
 # =============================================================================
@@ -82,25 +86,25 @@ class CoachState(BaseState):
     State for coaching and psychological support agents.
     Includes mood analysis and safety checks.
     """
-    user_mood_analysis: str = Field(
+    user_mood_analysis: Annotated[str, overwrite] = Field(
         default="", 
         description="Analysis of user's current emotional state"
     )
-    safety_check_passed: bool = Field(
+    safety_check_passed: Annotated[bool, overwrite] = Field(
         default=True, 
         description="False if crisis intervention needed"
     )
     
     # Extended coaching context
-    mood_scores: dict[str, float] = Field(
+    mood_scores: Annotated[dict[str, float], overwrite] = Field(
         default_factory=dict,
         description="Mood dimensions: {'stress': 0.7, 'motivation': 0.4, 'anxiety': 0.3}"
     )
-    suggested_actions: list[str] = Field(
+    suggested_actions: Annotated[list[str], overwrite] = Field(
         default_factory=list, 
         description="Recommended actions for user"
     )
-    session_goals: list[str] = Field(
+    session_goals: Annotated[list[str], overwrite] = Field(
         default_factory=list,
         description="Goals for current session"
     )
@@ -116,19 +120,19 @@ class WriterState(BaseState):
     Manages plot outline, chapters, and editorial feedback.
     """
     # Inputs
-    current_outline: str = Field(default="", description="Summary of chapter/scene to write")
-    project_id: str = Field(default="", description="Current project identifier")
+    current_outline: Annotated[str, overwrite] = Field(default="", description="Summary of chapter/scene to write")
+    project_id: Annotated[str, overwrite] = Field(default="", description="Current project identifier")
     
     # Internal working state
-    retrieved_lore: str = Field(default="", description="Context from StoryBible")
-    draft_content: str = Field(default="", description="Generated raw text")
-    critique_notes: str = Field(default="", description="Feedback from Critic")
-    iteration_count: int = Field(default=0, description="Reflexion loop counter")
+    retrieved_lore: Annotated[str, overwrite] = Field(default="", description="Context from StoryBible")
+    draft_content: Annotated[str, overwrite] = Field(default="", description="Generated raw text")
+    critique_notes: Annotated[str, overwrite] = Field(default="", description="Feedback from Critic")
+    iteration_count: Annotated[int, overwrite] = Field(default=0, description="Reflexion loop counter")
     
     # Legacy/Extended fields
-    plot_outline: list[str] = Field(default_factory=list, description="Full book outline")
-    character_stats: dict[str, Any] = Field(default_factory=dict)
-    word_count: int = Field(default=0)
+    plot_outline: Annotated[list[str], overwrite] = Field(default_factory=list, description="Full book outline")
+    character_stats: Annotated[dict[str, Any], overwrite] = Field(default_factory=dict)
+    word_count: Annotated[int, overwrite] = Field(default=0)
 
 
 # =============================================================================
