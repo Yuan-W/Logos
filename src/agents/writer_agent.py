@@ -27,6 +27,7 @@ import os
 from src.graph.state import WriterState
 from src.database.models import StoryBible
 from src.database.db_init import get_session
+from src.agents.nodes.editor import create_editor
 
 
 # =============================================================================
@@ -140,17 +141,13 @@ def create_lore_retriever(session: Session):
 
 def create_drafter(llm: BaseChatModel, glossary_context: str = ""):
     def drafter(state: WriterState) -> WriterState:
-        # Determine Role - we'll infer from project_id or metadata, 
-        # but for now let's assume "screenwriter" if project_id starts with 'scr', else novelist
-        # Or better, pass it in 'messages' or check a config. 
-        # User requested: "Dynamic System Prompt" based on Role.
-        # Let's check state.messages[0] for system instruction override or default to Novelist.
-        
+        # Determine Role logic
         role = "novelist"
-        # Simple heuristic or explicit field could be added. 
-        # Using a default for now due to strict state.
         
-        if "screenplay" in state.current_outline.lower():
+        # Check explicit agent role from state (injected by main.py)
+        if state.agent_role == "screenwriter":
+            role = "screenwriter"
+        elif "screenplay" in state.current_outline.lower():
             role = "screenwriter"
             
         sys_prompt = SCREENWRITER_PROMPT if role == "screenwriter" else NOVELIST_PROMPT
@@ -168,6 +165,7 @@ def create_drafter(llm: BaseChatModel, glossary_context: str = ""):
         
         response = llm.invoke(messages)
         state.draft_content = response.content
+        state.messages.append(AIMessage(content=response.content)) # Fix: Append to history
         state.iteration_count += 1
         return state
     return drafter
@@ -265,13 +263,15 @@ def build_writer_agent(llm: BaseChatModel, session: Session, checkpointer: Optio
     
     graph.add_node("retrieve", create_lore_retriever(session))
     graph.add_node("draft", create_drafter(llm, glossary_context))
+    graph.add_node("editor", create_editor(llm, session))
     graph.add_node("critic", create_critic(llm))
     graph.add_node("revise", create_reviser())
     graph.add_node("extract", create_lore_extractor(llm, session))
     
     graph.set_entry_point("retrieve")
     graph.add_edge("retrieve", "draft")
-    graph.add_edge("draft", "critic")
+    graph.add_edge("draft", "editor")
+    graph.add_edge("editor", "critic")
     
     def revision_check(state: WriterState):
         if state.critique_notes != "Approve" and state.iteration_count < 2:

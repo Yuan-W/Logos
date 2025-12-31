@@ -7,10 +7,72 @@ Author: System Architect
 """
 
 from typing import List, Dict, Any, Optional
-from sqlalchemy import select, or_
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import select, or_, func
 from sqlalchemy.orm import Session
 from src.database.models import TermRegistry
 from src.utils.ingestion import get_embedding
+
+
+def upsert_term(session: Session, scope: str, term: str, definition: str, aliases: List[str] = None):
+    """
+    Insert or Update a term with Semantic Composite Embedding.
+    
+    Composite String: "Term (Alias1, Alias2): Definition"
+    This ensures the vector captures synonyms and context.
+    """
+    if aliases is None:
+        aliases = []
+        
+    # Create composite string for embedding
+    alias_str = ", ".join(aliases)
+    semantic_text = f"{term}"
+    if alias_str:
+        semantic_text += f" ({alias_str})"
+    semantic_text += f": {definition}"
+    
+    embedding = get_embedding(semantic_text)
+    
+    # Upsert Logic
+    stmt = insert(TermRegistry).values(
+        scope=scope,
+        term=term,
+        definition=definition,
+        aliases=aliases,
+        embedding=embedding
+    ).on_conflict_do_update(
+        index_elements=['scope', 'term'], # Assuming unique constraint on scope+term (need to verify model)
+        set_={
+            "definition": definition,
+            "aliases": aliases,
+            "embedding": embedding,
+            "updated_at": func.now()
+        }
+    )
+    # Wait, simple insert might fail if constraint missing. 
+    # models.py didn't verify UniqueConstraint on (scope, term).
+    # Let's check models.py or use check-then-update logic for safety.
+    
+    existing = session.execute(
+        select(TermRegistry).where(TermRegistry.scope == scope, TermRegistry.term == term)
+    ).scalar_one_or_none()
+    
+    if existing:
+        existing.definition = definition
+        existing.aliases = aliases
+        existing.embedding = embedding
+    else:
+        new_term = TermRegistry(
+            scope=scope,
+            term=term,
+            definition=definition,
+            aliases=aliases,
+            embedding=embedding
+        )
+        session.add(new_term)
+        
+    session.commit()
+
 
 
 class TermRetriever:

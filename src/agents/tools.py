@@ -1,18 +1,19 @@
 """
 TRPG Tools
 ==========
-Tools for dice rolling and rule lookup in TRPG games.
+Tools for dice rolling, rule lookup, and character state management.
 """
 
 import re
 import random
-from typing import Optional
+from typing import Optional, Any
 
 from langchain_core.tools import tool
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from src.database.models import Rulebook
+from src.database.models import RuleBookChunk, Character
+from src.database.db_init import get_session
 
 
 @tool
@@ -55,28 +56,96 @@ def dice_roller(expression: str) -> dict:
     }
 
 
+@tool
+def update_character(character_id: int, field: str, value: Any) -> str:
+    """
+    Update a character's stat (HP, conditions, inventory) in the database.
+    Changes persist across sessions.
+    
+    Args:
+        character_id: The ID of the character to update.
+        field: The field to update (e.g., "hp", "conditions", "gold").
+        value: The new value for the field.
+    
+    Returns:
+        Confirmation message.
+    """
+    session = get_session()
+    try:
+        stmt = select(Character).where(Character.id == character_id)
+        character = session.execute(stmt).scalar_one_or_none()
+        
+        if not character:
+            return f"Error: Character with ID {character_id} not found."
+        
+        # Update current_status JSONB
+        current_status = dict(character.current_status) if character.current_status else {}
+        current_status[field] = value
+        character.current_status = current_status
+        
+        session.commit()
+        
+        return f"Updated {character.name}'s {field} to {value}."
+    except Exception as e:
+        return f"Error updating character: {e}"
+    finally:
+        session.close()
+
+
+@tool
+def lookup_stats(query: str) -> str:
+    """
+    Look up precise numerical stats (HP, AC, CR, Damage) for monsters or spells.
+    Retrieves structured JSON data from the RuleBookChunk table.
+    Use this for specific mechanics questions.
+    
+    Args:
+        query: Name of the entity (e.g., "Goblin", "Fireball")
+    
+    Returns:
+        JSON string with the stat block, or "Not found".
+    """
+    session = get_session()
+    try:
+        # JSONB search or content ILIKE
+        sql = text("""
+            SELECT stat_block FROM rulebook_chunks 
+            WHERE content ILIKE :q 
+            LIMIT 1
+        """)
+        result = session.execute(sql, {"q": f"%{query}%"}).scalar()
+        
+        if result:
+            return str(result)
+        return f"No stats found for '{query}'."
+    finally:
+        session.close()
+
+
 def create_rule_lookup(session: Session):
     """
     Factory function to create a rule_lookup tool with database session.
-    
-    In production, this would use pgvector similarity search.
-    For now, uses basic text matching.
+    Uses RuleBookChunk for semantic search on lore/text.
     """
+    from src.utils.ingestion import get_embedding
+    
     @tool
     def rule_lookup(query: str) -> str:
         """
-        Search the rulebook for relevant rules.
+        Search the rulebook for lore, rules descriptions, and general game text.
+        Use this for "how does X work?" questions.
         
         Args:
-            query: Search query for rules (e.g., "combat", "stealth check")
+            query: Search query for rules (e.g., "how does sneak attack work?")
         
         Returns:
-            Relevant rule text from the rulebook
+            Relevant rule text from the rulebook.
         """
-        # In production: Use pgvector similarity search
-        # For now: Basic ILIKE search
-        stmt = select(Rulebook).where(
-            Rulebook.content.ilike(f"%{query}%")
+        # Use semantic search on RuleBookChunk
+        query_vec = get_embedding(query)
+        
+        stmt = select(RuleBookChunk).order_by(
+            RuleBookChunk.embedding.cosine_distance(query_vec)
         ).limit(3)
         
         results = session.execute(stmt).scalars().all()
@@ -85,10 +154,12 @@ def create_rule_lookup(session: Session):
             return f"No specific rules found for '{query}'. Use GM discretion."
         
         rule_texts = []
-        for rule in results:
-            system = rule.meta.get("system", "generic") if rule.meta else "generic"
-            rule_texts.append(f"[{system}] {rule.content}")
+        for chunk in results:
+            meta = chunk.source_metadata or {}
+            source = meta.get("source_file", "Rulebook")
+            page = meta.get("page_num", "?")
+            rule_texts.append(f"[{source} p.{page}]\n{chunk.content}")
         
-        return "\n\n".join(rule_texts)
+        return "\n\n---\n\n".join(rule_texts)
     
     return rule_lookup

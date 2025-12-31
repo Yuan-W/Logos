@@ -99,7 +99,7 @@ class Rulebook(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    embedding: Mapped[list[float]] = mapped_column(Vector(3072))  # Gemini 001 embedding size
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))  # Gemini 001 embedding size
     meta: Mapped[dict[str, Any]] = mapped_column(
         JSONB, 
         default=dict,
@@ -146,7 +146,7 @@ class StoryBible(Base):
     entity_name: Mapped[str] = mapped_column(String(128), nullable=False)
     entity_type: Mapped[str] = mapped_column(String(32), nullable=False)  # character, location, item, event
     description: Mapped[str] = mapped_column(Text, nullable=False)
-    embedding: Mapped[list[float]] = mapped_column(Vector(3072))
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))
     
     # Relations to other entities
     relations: Mapped[dict[str, Any]] = mapped_column(
@@ -283,7 +283,7 @@ class Document(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title: Mapped[str] = mapped_column(String(512), nullable=False)
     chunk_content: Mapped[str] = mapped_column(Text, nullable=False)
-    embedding: Mapped[list[float]] = mapped_column(Vector(3072))
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))
     source_page: Mapped[int] = mapped_column(Integer, nullable=True)
     source_url: Mapped[str] = mapped_column(String(1024), nullable=True)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
@@ -299,10 +299,63 @@ class CodeSnippet(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     language: Mapped[str] = mapped_column(String(32), nullable=False)  # python, typescript, rust, etc.
     code_block: Mapped[str] = mapped_column(Text, nullable=False)
-    embedding: Mapped[list[float]] = mapped_column(Vector(3072))
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))
     description: Mapped[str] = mapped_column(Text, nullable=True)
     source_file: Mapped[str] = mapped_column(String(512), nullable=True)
     meta: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class RuleBookChunk(Base):
+    """
+    Vision-extracted Rulebook Chunk (Gemini Distill).
+    Stores semantic content + structured stat blocks.
+    To replace `Rulebook` eventually.
+    """
+    __tablename__ = "rulebook_chunks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))
+    
+    # Structured data extracted by Vision (Monster stats, Spell details)
+    stat_block: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    
+    # Traceability
+    source_metadata: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, 
+        default=dict,
+        comment='{"source_file": "...", "page_num": 1, "flavor": "trpg"}'
+    )
+    
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class DocumentChunk(Base):
+    """
+    Vision-extracted Document Chunk (Gemini Distill).
+    Stores text + structured chart data.
+    To replace `Document` eventually.
+    """
+    __tablename__ = "document_chunks"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))
+    
+    # Structured data extracted by Vision (Charts, Tables)
+    stat_block: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
+    
+    source_metadata: Mapped[dict[str, Any]] = mapped_column(
+        JSONB, 
+        default=dict,
+        comment='{"source_file": "...", "page_num": 1, "flavor": "research"}'
+    )
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
@@ -329,7 +382,7 @@ class TermRegistry(Base):
     aliases: Mapped[list[str]] = mapped_column(JSONB, default=list)
     
     # Semantic search support
-    embedding: Mapped[list[float]] = mapped_column(Vector(3072))
+    embedding: Mapped[list[float]] = mapped_column(Vector(768))
     
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -14,6 +14,7 @@ from src.agents.gm_agent import build_gm_agent
 from src.agents.researcher_agent import build_researcher_agent
 from src.agents.coach_agent import build_coach_agent
 from src.agents.writer_agent import build_writer_agent
+from src.agents.code_agent import build_code_agent
 
 
 class AgentFactory:
@@ -29,7 +30,7 @@ class AgentFactory:
         Create an agent instance with glossary context injected.
         
         Args:
-            role: The agent role ('gm', 'researcher', 'coach', 'writer')
+            role: The agent role ('gm', 'researcher', 'coach', 'writer', 'coder')
             scopes: List of glossary scopes to active.
             query: The user query to fetch relevant terms for context (optional).
         """
@@ -39,7 +40,7 @@ class AgentFactory:
             glossary_context = fetch_glossary_context(self.session, scopes, query)
             
         # Build agent specific to role
-        if role == "gm":
+        if role in ["gm", "narrator", "rulekeeper"]:
             return build_gm_agent(
                 llm=self.llm, 
                 session=self.session, 
@@ -48,14 +49,12 @@ class AgentFactory:
             )
             
         elif role == "researcher":
-            # Assuming other agents might also need refactoring to accept glossary_context
-            # For now, pass checkpointer. If they don't accept glossary_context, we simply
-            # ignore it for now or we must refactor them too.
-            # Plan only mandated refactoring agents. The user mentioned "ALL agents".
-            # I will refactor others as I verify them.
             return build_researcher_agent(self.llm, self.session, checkpointer=self.checkpointer)
             
-        elif role == "coach":
+        elif role == "coder":
+            return build_code_agent(self.llm, self.session, checkpointer=self.checkpointer)
+            
+        elif role in ["coach", "psychologist"]:
             return build_coach_agent(
                  llm=self.llm,
                  session=self.session,
@@ -63,7 +62,7 @@ class AgentFactory:
                  glossary_context=glossary_context
             )
             
-        elif role == "writer":
+        elif role in ["writer", "screenwriter"]:
             return build_writer_agent(
                 llm=self.llm,
                 session=self.session,

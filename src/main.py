@@ -120,28 +120,40 @@ async def chat_endpoint(agent_role: str, request: ChatRequest):
         raise HTTPException(status_code=503, detail="Server initializing")
         
     # Determine Scopes based on Role and Request
+    # Map Aliases to Base Roles for scoping defaults
+    base_role_map = {
+        "narrator": "gm", "rulekeeper": "gm",
+        "screenwriter": "writer",
+        "psychologist": "coach",
+        "coder": "researcher"
+    }
+    base_role = base_role_map.get(agent_role, agent_role)
+    
     scopes = []
     
-    if agent_role == "gm":
+    if base_role == "gm":
         # Global system + Campaign specific (using session_id or user_id as proxy)
         scopes = ["global:trpg", "global:blades_in_the_dark"]
         if request.user_id:
             scopes.append(f"user:{request.user_id}")
             
-    elif agent_role == "writer":
+    elif base_role == "writer":
         scopes = ["global:writing"]
         if request.project_id:
             scopes.append(f"project:{request.project_id}")
             
-    elif agent_role == "coach":
+    elif base_role == "coach":
         scopes = ["global:psychology"]
         if request.user_id:
             scopes.append(f"user:{request.user_id}")
             
+    elif base_role == "researcher":
+        scopes = ["global:research"]
+            
     # Build Agent at Runtime with RAG Context
     try:
         agent = FACTORY.create_agent(
-            role=agent_role,
+            role=agent_role, # Pass specific alias to factory
             scopes=scopes,
             query=request.query
         )
@@ -152,18 +164,23 @@ async def chat_endpoint(agent_role: str, request: ChatRequest):
     initial_state = {
         "messages": [HumanMessage(content=request.query)],
         "user_id": request.user_id,
+        "agent_role": agent_role, # Inject specific persona
+        "active_scopes": scopes,
         **request.extra_context
     }
     
-    # Agent-specific state mapping
-    if agent_role == "writer":
+    # Agent-specific state mapping (using base_role)
+    if base_role == "writer":
         if not request.project_id:
             request.project_id = f"proj_{request.user_id}"
         initial_state["project_id"] = request.project_id
         initial_state["current_outline"] = request.query
-    elif agent_role == "coach":
+    elif base_role == "coach":
         if request.role_mode:
             initial_state["user_mood_analysis"] = request.role_mode
+    elif base_role == "researcher":
+        # Ensure search_queries is init
+        pass
 
     # Run Agent
     try:

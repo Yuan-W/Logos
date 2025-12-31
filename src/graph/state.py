@@ -26,8 +26,13 @@ class BaseState(BaseModel):
     """
     messages: Annotated[list[BaseMessage], add_messages] = Field(default_factory=list)
     user_id: Annotated[str, overwrite] = Field(default="", description="Current user identifier")
+    agent_role: Annotated[str, overwrite] = Field(default="", description="Specific persona (e.g. whistleblower, screenwriter)")
     conversation_summary: Annotated[str, overwrite] = Field(default="", description="Summarized history of older messages")
     
+    # Terminology specific
+    active_scopes: Annotated[list[str], overwrite] = Field(default_factory=list, description="Active glossary scopes")
+    strict_mode: Annotated[bool, overwrite] = Field(default=False, description="Enable strict glossary enforcement")
+
     model_config = {"arbitrary_types_allowed": True}
 
 
@@ -51,6 +56,12 @@ class GameState(BaseState):
     current_scene: Annotated[str, overwrite] = Field(default="", description="Current scene description")
     active_npcs: Annotated[list[str], overwrite] = Field(default_factory=list, description="NPCs in current scene")
     pending_actions: Annotated[list[str], overwrite] = Field(default_factory=list, description="Actions awaiting resolution")
+    
+    # Adversarial GM (Storyteller + Rules Lawyer)
+    draft_narrative: Annotated[str, overwrite] = Field(default="", description="Storyteller's pending narrative draft")
+    lawyer_feedback: Annotated[str, overwrite] = Field(default="", description="APPROVED or OBJECTION: [reason]")
+    adversarial_iteration: Annotated[int, overwrite] = Field(default=0, description="Iteration count (max 3)")
+    active_character_id: Annotated[int, overwrite] = Field(default=0, description="Current player character ID")
 
 
 # =============================================================================

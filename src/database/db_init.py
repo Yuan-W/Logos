@@ -22,29 +22,12 @@ def get_database_url() -> str:
 
 def init_database(echo: bool = False) -> None:
     """
-    Initialize the database:
-    1. Enable pgvector extension
-    2. Create all tables
+    [DEPRECATED] Use Alembic for migrations.
+    Legacy function that formerly initialized the database.
     """
+    print("WARNING: init_database() is deprecated. Please use 'alembic upgrade head' to manage schemas.")
     database_url = get_database_url()
-    engine = create_engine(database_url, echo=echo)
-    
-    # Enable pgvector extension
-    with engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        conn.commit()
-        print("✓ pgvector extension enabled")
-    
-    # Create all tables
-    Base.metadata.create_all(engine)
-    print("✓ All tables created")
-    
-    # Print summary
-    print("\nCreated tables:")
-    for table_name in Base.metadata.tables.keys():
-        print(f"  - {table_name}")
-    
-    return engine
+    return create_engine(database_url, echo=echo)
 
 
 def get_session(engine=None):
