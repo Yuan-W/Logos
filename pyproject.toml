@@ -1,0 +1,27 @@
+[project]
+name = "logos"
+version = "0.1.0"
+description = "Personal AI OS Foundation - Multi-agent system"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "sqlalchemy>=2.0",
+    "pgvector>=0.3",
+    "pydantic>=2.0",
+    "langgraph>=0.2",
+    "langchain-core>=0.3",
+    "psycopg[binary]>=3.0",
+    "pypdf>=3.0",
+    "langchain-openai>=0.1",
+    "tiktoken>=0.7",
+    "langchain-text-splitters>=0.2",
+    "fastapi>=0.109.0",
+    "uvicorn>=0.27.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
