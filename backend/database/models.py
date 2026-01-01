@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Any
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import JSON, DateTime, ForeignKey, Integer, String, Text, func
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
@@ -270,6 +270,12 @@ class Character(Base):
     
     # Relationships
     campaign: Mapped["Campaign"] = relationship(back_populates="characters")
+    
+    # P1 Fix: GIN indexes for JSONB query performance
+    __table_args__ = (
+        Index('ix_characters_stats_gin', 'stats', postgresql_using='gin'),
+        Index('ix_characters_status_gin', 'current_status', postgresql_using='gin'),
+    )
 
 
 # =============================================================================
@@ -332,6 +338,11 @@ class RuleBookChunk(Base):
     
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
+    )
+    
+    # P1 Fix: GIN index for stat_block queries
+    __table_args__ = (
+        Index('ix_rulebook_stat_block_gin', 'stat_block', postgresql_using='gin'),
     )
 
 

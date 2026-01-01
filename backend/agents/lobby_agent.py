@@ -5,16 +5,28 @@ The reception area for the Logos AI OS.
 Handles untargeted requests and routes users to the appropriate agent.
 """
 
-from typing import Literal, Annotated, TypedDict, List
+from typing import Literal, Annotated, TypedDict, List, Optional
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage, BaseMessage
 from langchain_core.language_models import BaseChatModel
 from langgraph.graph import StateGraph, END, MessageGraph
 from langgraph.graph.message import add_messages
 
+
+# --- P2 Fix: Standardized Handoff Payload ---
+class HandoffPayload(TypedDict, total=False):
+    """Payload passed from Lobby to Agent for context continuity."""
+    user_raw: str               # Original user input
+    system_hint: str            # Lobby's CoT analysis/interpretation
+    intent_classification: str  # e.g., "gameplay", "writing", "coaching"
+    suggested_scopes: List[str] # e.g., ["global:trpg", "global:dnd5e"]
+
+
 # --- State ---
 class LobbyState(TypedDict):
     messages: Annotated[List[BaseMessage], add_messages]
     next_agent: Literal["lobby", "gm", "writer", "coach", "researcher"]
+    handoff_payload: Optional[HandoffPayload]  # P2 Fix: Include payload
+
 
 # --- Prompts ---
 LOBBY_SYSTEM_PROMPT = """You are the Central Hub Interface for Logos AI (Personal AI OS).
@@ -44,6 +56,31 @@ Output ONLY one of the following words:
 User Request: {input}
 """
 
+# Intent classification for handoff context
+INTENT_HINTS = {
+    "gm": {
+        "intent_classification": "gameplay",
+        "suggested_scopes": ["global:trpg", "global:dnd5e"],
+        "system_hint": "User wants to play a tabletop RPG. Prepare game master mode."
+    },
+    "writer": {
+        "intent_classification": "creative_writing",
+        "suggested_scopes": ["global:writing"],
+        "system_hint": "User wants help with creative writing. Enter novelist/editor mode."
+    },
+    "coach": {
+        "intent_classification": "counseling",
+        "suggested_scopes": ["global:coaching"],
+        "system_hint": "User seeks advice or emotional support. Enter empathetic coaching mode."
+    },
+    "researcher": {
+        "intent_classification": "research",
+        "suggested_scopes": ["global:research"],
+        "system_hint": "User wants research or technical help. Enter deep research mode."
+    },
+}
+
+
 def create_lobby_agent(llm: BaseChatModel):
     
     def router(state: LobbyState) -> LobbyState:
@@ -60,8 +97,22 @@ def create_lobby_agent(llm: BaseChatModel):
         # Fallback
         if choice not in ["gm", "writer", "coach", "researcher"]:
             choice = "lobby"
+        
+        # P2 Fix: Build handoff payload
+        handoff_payload: Optional[HandoffPayload] = None
+        if choice != "lobby":
+            hints = INTENT_HINTS.get(choice, {})
+            handoff_payload = HandoffPayload(
+                user_raw=last_msg,
+                system_hint=hints.get("system_hint", ""),
+                intent_classification=hints.get("intent_classification", ""),
+                suggested_scopes=hints.get("suggested_scopes", [])
+            )
             
-        return {"next_agent": choice}
+        return {
+            "next_agent": choice,
+            "handoff_payload": handoff_payload
+        }
 
     def responder(state: LobbyState) -> LobbyState:
         # Used only if next_agent is 'lobby'
