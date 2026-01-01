@@ -12,11 +12,11 @@ import os
 from unittest.mock import MagicMock
 from langchain_core.messages import AIMessage, HumanMessage
 
-from src.utils.ingestion import ingest_code_file
-from src.agents.code_agent import build_code_agent
-from src.database.models import CodeSnippet
-from src.database.db_init import get_session
-from src.utils.agent_factory import AgentFactory
+from backend.utils.ingestion import ingest_code_file
+from backend.agents.code_agent import build_code_agent
+from backend.database.models import CodeSnippet
+from backend.database.db_init import get_session
+from backend.utils.agent_factory import AgentFactory
 
 # Helper to create a dummy code file
 DUMMY_CODE = """
@@ -94,7 +94,7 @@ def test_code_ingestion_and_retrieval(session):
         # We mock query_expander or just ensure retrieval works.
         
         # Actually, let's just test the retrieval logic directly first to be sure.
-        from src.agents.code_agent import retrieve_code_snippets
+        from backend.agents.code_agent import retrieve_code_snippets
         
         results = retrieve_code_snippets(session, ["bubble sort"], k=1)
         assert len(results) > 0

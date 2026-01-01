@@ -12,9 +12,9 @@ import pytest
 from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 
-from src.database.models import RuleBookChunk, Character, Campaign
-from src.database.db_init import get_session
-from src.agents.tools import dice_roller, lookup_stats, update_character, create_rule_lookup
+from backend.database.models import RuleBookChunk, Character, Campaign
+from backend.database.db_init import get_session
+from backend.agents.tools import dice_roller, lookup_stats, update_character, create_rule_lookup
 
 
 @pytest.fixture
@@ -232,7 +232,7 @@ class TestAdversarialLoop:
         Verify that the Rules Lawyer prompt would include condition info.
         This tests the data availability, not the LLM response.
         """
-        from src.tools.character_manager import get_character_prompt_block
+        from backend.tools.character_manager import get_character_prompt_block
         
         campaign, grog = grog_the_grappled
         

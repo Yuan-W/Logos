@@ -40,30 +40,44 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "-H", "Authorization: Bearer ${LITELLM_MASTER_KEY:-sk-litellm-master-key}", "http://localhost:4000/health" ]
+      test: [ "CMD-SHELL", "python3 -c \"import urllib.request; req = urllib.request.Request('http://localhost:4000/health'); req.add_header('Authorization', 'Bearer ${LITELLM_MASTER_KEY:-sk-litellm-master-key}'); urllib.request.urlopen(req)\"" ]
       interval: 30s
       timeout: 10s
       retries: 3
 
-  open-webui:
-    image: ghcr.io/open-webui/open-webui:main
-    container_name: logos-webui
+  gateway:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    container_name: logos-gateway
     restart: unless-stopped
     ports:
-      - "3000:8080"
+      - "8000:8000"
     env_file:
       - .env
     environment:
-      OPENAI_API_BASE_URL: http://litellm:4000/v1
+      # Chainlit uses asyncpg which requires plain postgresql:// scheme
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-logos}
+      # SQLAlchemy backend uses psycopg driver
+      SQLALCHEMY_DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-logos}
+      LITELLM_URL: http://litellm:4000/v1
       OPENAI_API_KEY: ${LITELLM_MASTER_KEY:-sk-litellm-master-key}
-      WEBUI_AUTH: "false"
+      # LangSmith Tracing
+      LANGCHAIN_TRACING_V2: ${LANGCHAIN_TRACING_V2:-false}
+      LANGCHAIN_ENDPOINT: ${LANGCHAIN_ENDPOINT:-https://api.smith.langchain.com}
+      LANGCHAIN_API_KEY: ${LANGCHAIN_API_KEY:-}
+      LANGCHAIN_PROJECT: ${LANGCHAIN_PROJECT:-logos-ai-os}
+    command: [ "uv", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000" ]
     depends_on:
-      - litellm
+      postgres:
+        condition: service_healthy
+      litellm:
+        condition: service_healthy
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:

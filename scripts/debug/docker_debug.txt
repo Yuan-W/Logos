@@ -1,0 +1,247 @@
+CONTAINER ID   IMAGE                                 COMMAND                  CREATED          STATUS                                  PORTS                                         NAMES
+087dc1e83c34   infra-gateway                         "uv run chainlit run…"   23 seconds ago   Restarting (1) Less than a second ago                                                 logos-gateway
+8427aa688ee2   python:3.11-slim                      "sh -c 'pip install …"   55 minutes ago   Exited (0) 53 minutes ago                                                             logos-setup
+bc4785bdca2b   ghcr.io/open-webui/open-webui:main    "bash start.sh"          55 minutes ago   Up 54 minutes (healthy)                 0.0.0.0:3000->8080/tcp, [::]:3000->8080/tcp   logos-webui
+1f757c33a946   ghcr.io/berriai/litellm:main-latest   "docker/prod_entrypo…"   55 minutes ago   Up 55 minutes (healthy)                 0.0.0.0:4000->4000/tcp, [::]:4000->4000/tcp   logos-litellm
+76068df397b7   pgvector/pgvector:pg16                "docker-entrypoint.s…"   55 minutes ago   Up 55 minutes (healthy)                 0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp   logos-postgres
+   Building logos @ file:///app
+      Built logos @ file:///app
+Installed 1 package in 0.31ms
+Traceback (most recent call last):
+  File "/app/.venv/bin/chainlit", line 10, in <module>
+    sys.exit(cli())
+             ^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1406, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 217, in chainlit_run
+    run_chainlit(target)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 86, in run_chainlit
+    load_module(config.run.module_name)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/config.py", line 578, in load_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/src/app.py", line 97, in <module>
+    @cl.on_chat_profile_update
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/utils.py", line 85, in __getattr__
+    module_path = registry[name]
+                  ~~~~~~~~^^^^^^
+KeyError: 'on_chat_profile_update'
+Traceback (most recent call last):
+  File "/app/.venv/bin/chainlit", line 10, in <module>
+    sys.exit(cli())
+             ^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1406, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 217, in chainlit_run
+    run_chainlit(target)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 86, in run_chainlit
+    load_module(config.run.module_name)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/config.py", line 578, in load_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/src/app.py", line 97, in <module>
+    @cl.on_chat_profile_update
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/utils.py", line 85, in __getattr__
+    module_path = registry[name]
+                  ~~~~~~~~^^^^^^
+KeyError: 'on_chat_profile_update'
+Traceback (most recent call last):
+  File "/app/.venv/bin/chainlit", line 10, in <module>
+    sys.exit(cli())
+             ^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1406, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 217, in chainlit_run
+    run_chainlit(target)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 86, in run_chainlit
+    load_module(config.run.module_name)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/config.py", line 578, in load_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/src/app.py", line 97, in <module>
+    @cl.on_chat_profile_update
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/utils.py", line 85, in __getattr__
+    module_path = registry[name]
+                  ~~~~~~~~^^^^^^
+KeyError: 'on_chat_profile_update'
+Traceback (most recent call last):
+  File "/app/.venv/bin/chainlit", line 10, in <module>
+    sys.exit(cli())
+             ^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1406, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 217, in chainlit_run
+    run_chainlit(target)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 86, in run_chainlit
+    load_module(config.run.module_name)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/config.py", line 578, in load_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/src/app.py", line 97, in <module>
+    @cl.on_chat_profile_update
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/utils.py", line 85, in __getattr__
+    module_path = registry[name]
+                  ~~~~~~~~^^^^^^
+KeyError: 'on_chat_profile_update'
+Traceback (most recent call last):
+  File "/app/.venv/bin/chainlit", line 10, in <module>
+    sys.exit(cli())
+             ^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1406, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 217, in chainlit_run
+    run_chainlit(target)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 86, in run_chainlit
+    load_module(config.run.module_name)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/config.py", line 578, in load_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/src/app.py", line 97, in <module>
+    @cl.on_chat_profile_update
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/utils.py", line 85, in __getattr__
+    module_path = registry[name]
+                  ~~~~~~~~^^^^^^
+KeyError: 'on_chat_profile_update'
+Traceback (most recent call last):
+  File "/app/.venv/bin/chainlit", line 10, in <module>
+    sys.exit(cli())
+             ^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1406, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 217, in chainlit_run
+    run_chainlit(target)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 86, in run_chainlit
+    load_module(config.run.module_name)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/config.py", line 578, in load_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/src/app.py", line 97, in <module>
+    @cl.on_chat_profile_update
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/utils.py", line 85, in __getattr__
+    module_path = registry[name]
+                  ~~~~~~~~^^^^^^
+KeyError: 'on_chat_profile_update'
+Traceback (most recent call last):
+  File "/app/.venv/bin/chainlit", line 10, in <module>
+    sys.exit(cli())
+             ^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1485, in __call__
+    return self.main(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1406, in main
+    rv = self.invoke(ctx)
+         ^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1873, in invoke
+    return _process_result(sub_ctx.command.invoke(sub_ctx))
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 1269, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/click/core.py", line 824, in invoke
+    return callback(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 217, in chainlit_run
+    run_chainlit(target)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/cli/__init__.py", line 86, in run_chainlit
+    load_module(config.run.module_name)
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/config.py", line 578, in load_module
+    spec.loader.exec_module(module)
+  File "<frozen importlib._bootstrap_external>", line 999, in exec_module
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/src/app.py", line 97, in <module>
+    @cl.on_chat_profile_update
+     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.12/site-packages/chainlit/utils.py", line 85, in __getattr__
+    module_path = registry[name]
+                  ~~~~~~~~^^^^^^
+KeyError: 'on_chat_profile_update'

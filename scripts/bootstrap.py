@@ -64,7 +64,7 @@ def bootstrap():
     run_cmd("uv run alembic upgrade head")
     
     print("\n=== Bootstrap Complete! ===")
-    print("You can now run the server with: uv run python src/main.py")
+    print("You can now run the server with: uv run python backend/gateway/api.py")
 
 if __name__ == "__main__":
     bootstrap()

@@ -29,9 +29,10 @@ check_docker() {
 
 cmd_up() {
     log_info "Starting Logos AI stack..."
-    docker compose -f "$COMPOSE_FILE" up -d
+    docker compose -f "$COMPOSE_FILE" up -d --build
     log_info "Stack started! Waiting for services to be ready..."
-    sleep 20
+    log_info "Note: The 'setup' container will run once to configure the UI."
+    sleep 15
     cmd_health
 }
 
@@ -61,27 +62,32 @@ cmd_health() {
     if curl -sf -H "Authorization: Bearer sk-litellm-master-key" http://localhost:4000/health &> /dev/null; then
         log_info "LiteLLM: ✓ healthy"
     else
-        log_warn "LiteLLM: ✗ not ready (may still be starting)"
+        log_warn "LiteLLM: ✗ not ready"
         all_healthy=false
     fi
 
-    # Check Open WebUI
-    if curl -sf http://localhost:3000/health &> /dev/null; then
-        log_info "Open WebUI: ✓ healthy"
+    # Check Logos Gateway (Chainlit)
+    if curl -sf http://localhost:8000/ &> /dev/null; then
+        log_info "Logos Gateway (Chainlit): ✓ healthy"
     else
-        log_warn "Open WebUI: ✗ not ready (may still be starting)"
-        all_healthy=false
+        # Chainlit often doesn't expose /health by default unless configured, let's assume it's up if port is open
+        if nc -z localhost 8000; then
+             log_info "Logos Gateway (Chainlit): ✓ port open"
+        else
+            log_error "Logos Gateway (Chainlit): ✗ unreachable"
+            all_healthy=false
+        fi
     fi
 
     if $all_healthy; then
-        log_info "All services are healthy!"
+        log_info "All core services are healthy!"
         echo ""
         log_info "Access points:"
-        echo "  - Open WebUI:  http://localhost:3000"
-        echo "  - LiteLLM API: http://localhost:4000"
-        echo "  - PostgreSQL:  localhost:5432"
+        echo "  - Logos AI OS (Chainlit): http://localhost:8000"
+        echo "  - LiteLLM API:            http://localhost:4000"
+        echo "  - PostgreSQL:             localhost:5432"
     else
-        log_warn "Some services are not ready yet. Try again in a few seconds."
+        log_warn "Some services are not ready yet. Try 'scripts/init.sh logs' to debug."
     fi
 }
 

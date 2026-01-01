@@ -7,8 +7,8 @@ Use this when applying breaking schema changes (like Vector dimension changes).
 WARNING: DATA LOSS!
 """
 from sqlalchemy import create_engine
-from src.database.models import Base
-from src.database.db_init import get_database_url, init_database
+from backend.database.models import Base
+from backend.database.db_init import get_database_url, init_database
 
 def reset_database():
     print("⚠️  WARNING: This will DROP ALL DATA in the database.")

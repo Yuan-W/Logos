@@ -15,60 +15,37 @@
 
 ## 架构
 
+## 架构
+
 ```mermaid
 graph TD
-    UI[Open WebUI] --> Gateway[LiteLLM Gateway]
+    UI[Frontend (Chainlit/Streamlit)] --> Gateway[FastAPI Gateway]
     Gateway --> AG[LangGraph Agents]
     AG --> DB[(PostgreSQL + pgvector)]
     AG --> LLM[Gemini/Claude/OpenAI]
-    Ingest[Gemini-Distill Ingestor] --> DB
-```
-
-## 环境要求
-
-- Docker Engine 24+
-- Docker Compose v2
-- uv (Python 包管理工具)
-
-## 快速开始
-
-```bash
-# 1. 初始化环境变量
-cp infra/.env.example infra/.env
-# 编辑 infra/.env 填入 API 密钥
-
-# 2. 启动基础服务
-./scripts/init.sh up
-
-# 3. 初始化数据库与环境 (Alembic 迁移)
-python scripts/bootstrap.py
-
-# 4. 运行测试验证
-uv run pytest tests/test_full_stack.py
 ```
 
 ## 服务列表
 
 | 服务 | 端口 | 说明 |
 |------|------|------|
-| Open WebUI | 3000 | AI 对话界面 |
+| Chainlit UI | 8000 | AI 对话界面与可视化 |
 | LiteLLM | 4000 | 多模型 API 网关 |
-| API Gateway | 8000 | LangGraph Agents 服务入口 (FastAPI) |
 | PostgreSQL | 5432 | 向量数据库 |
 
 ## 项目结构
 
 ```
 Logos/
-├── src/                    # 核心代码
-│   ├── agents/             # 各类智能体实现 (GM, Writer, Coach...)
-│   ├── database/           # SQLAlchemy 模型与 Alembic 迁移
-│   ├── graph/              # LangGraph 状态定义
-│   └── ingest/             # Gemini-Distill 视觉解析引擎
-├── infra/                  # Docker 基础设施与配置
-├── tests/                  # 完备的测试套件
-├── scripts/                # 自动化初始化与管理脚本
-└── pyproject.toml          # uv 项目管理
+├── backend/                # 核心逻辑
+│   ├── gateway/            # 应用入口与生命周期管理
+│   ├── agents/             # 智能体业务逻辑
+│   ├── database/           # 数据模型
+│   └── utils/              # 通用工具
+├── frontend/
+│   └── chainlit/           # Chainlit 对话主界面 (含骰子工具)
+├── infra/                  # Docker 配置
+└── scripts/                # 管理脚本
 ```
 
 ## 开发与扩展

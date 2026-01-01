@@ -7,10 +7,10 @@ scope prioritization and retrieval.
 
 import unittest
 from sqlalchemy import delete
-from src.database.models import TermRegistry
-from src.database.db_init import get_session
-from src.tools.glossary import TermRetriever
-from src.utils.ingestion import get_embedding
+from backend.database.models import TermRegistry
+from backend.database.db_init import get_session
+from backend.tools.glossary import TermRetriever
+from backend.utils.ingestion import get_embedding
 
 class TestGlossary(unittest.TestCase):
     

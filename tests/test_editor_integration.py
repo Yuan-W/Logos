@@ -9,11 +9,11 @@ from typing import Dict, Any
 from unittest.mock import MagicMock
 from langchain_core.messages import AIMessage, HumanMessage
 
-from src.agents.nodes.editor import create_editor
-from src.database.models import TermRegistry
-from src.database.db_init import get_session
-from src.graph.state import BaseState
-from src.utils.ingestion import get_embedding
+from backend.agents.nodes.editor import create_editor
+from backend.database.models import TermRegistry
+from backend.database.db_init import get_session
+from backend.graph.state import BaseState
+from backend.utils.ingestion import get_embedding
 
 # Mock State
 class MockState(BaseState):

@@ -12,11 +12,11 @@ from unittest.mock import MagicMock, patch
 from sqlalchemy.orm import Session
 from langchain_core.messages import AIMessage
 
-from src.ingest.engine import GeminiIngestor
-from src.database.models import RuleBookChunk, DocumentChunk
-from src.database.db_init import get_session
-from src.agents.gm_agent import lookup_stats
-from src.agents.researcher_agent import fetch_chart_data
+from backend.ingest.engine import GeminiIngestor
+from backend.database.models import RuleBookChunk, DocumentChunk
+from backend.database.db_init import get_session
+from backend.agents.gm_agent import lookup_stats
+from backend.agents.researcher_agent import fetch_chart_data
 
 @pytest.fixture
 def session():
@@ -47,8 +47,8 @@ def test_ingestion_logic_mocked(session):
         ]
     }))
     
-    with patch("src.ingest.engine.convert_from_path", mock_pdf_convert):
-        with patch("src.ingest.engine.vision_llm") as mock_llm:
+    with patch("backend.ingest.engine.convert_from_path", mock_pdf_convert):
+        with patch("backend.ingest.engine.vision_llm") as mock_llm:
             mock_llm.invoke.return_value = mock_vision_resp
             
             ingestor = GeminiIngestor(session)

@@ -13,8 +13,8 @@ import sys
 # Add project root to python path to allow imports
 sys.path.append(os.getcwd())
 
-from src.database.models import Base
-from src.database.db_init import get_database_url
+from backend.database.models import Base
+from backend.database.db_init import get_database_url
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

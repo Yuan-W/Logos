@@ -4,10 +4,10 @@ model_list:
     litellm_params:
       model: gemini/gemini-3-flash-preview
       api_key: os.environ/GEMINI_API_KEY
-  - model_name: gemini-3-pro-preview
-    litellm_params:
-      model: gemini/gemini-3-pro-preview
-      api_key: os.environ/GEMINI_API_KEY
+  # - model_name: gemini-3-pro-preview
+  #   litellm_params:
+  #     model: gemini/gemini-3-pro-preview
+  #     api_key: os.environ/GEMINI_API_KEY
 
   # Alternative models
   # - model_name: claude-4.5

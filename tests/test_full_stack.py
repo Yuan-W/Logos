@@ -10,9 +10,9 @@ from unittest.mock import MagicMock, ANY
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.language_models import FakeListChatModel
 
-from src.utils.agent_factory import AgentFactory
-from src.database.models import UserProfile, GameState
-from src.graph.state import BaseState
+from backend.utils.agent_factory import AgentFactory
+from backend.database.models import UserProfile, GameState
+from backend.graph.state import BaseState
 
 # The 9 Required Personas
 PERSONAS = [

@@ -11,15 +11,15 @@ from unittest.mock import MagicMock
 from langchain_core.messages import AIMessage, HumanMessage
 
 # Import SUT
-from src.tools.glossary import upsert_term, TermRetriever
-from src.agents.nodes.editor import create_editor
-from src.database.models import TermRegistry
-from src.graph.state import BaseState
+from backend.tools.glossary import upsert_term, TermRetriever
+from backend.agents.nodes.editor import create_editor
+from backend.database.models import TermRegistry
+from backend.graph.state import BaseState
 
 # We need a real DB session for this to test pgvector, 
 # but for unit testing in CI/CD we might mocking. 
 # However, the user asked for "Verification", assuming access to the dev environment.
-from src.database.db_init import get_session
+from backend.database.db_init import get_session
 
 @pytest.fixture
 def session():
