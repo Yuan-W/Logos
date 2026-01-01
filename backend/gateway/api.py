@@ -16,13 +16,16 @@ Supported Roles:
 - writer (Novelist/Screenwriter)
 """
 
+import os
 import json
 import logging
+import shutil
+import tempfile
 from contextlib import asynccontextmanager
 from typing import Dict, Any, List, Optional
 from typing_extensions import TypedDict
 
-from fastapi import FastAPI, Request, HTTPException, Depends
+from fastapi import FastAPI, Request, HTTPException, Depends, UploadFile, File, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -289,6 +292,58 @@ async def chat_endpoint(agent_role: str, request: ChatRequest):
     
     clean_state = {k: v for k, v in final_state.items() if k not in ["messages"]}
     return ChatResponse(response=str(last_response), final_state=clean_state)
+
+
+# --- Ingestion API ---
+
+def run_ingestion(file_path: str, flavor: str):
+    """Background task to run the ingestion engine."""
+    from backend.ingest.engine import GeminiIngestor
+    ingestor = GeminiIngestor()
+    try:
+        logger.info(f"Starting ingestion for {file_path} with flavor {flavor}")
+        ingestor.process_file(file_path, flavor=flavor)
+        logger.info(f"Ingestion completed for {file_path}")
+    except Exception as e:
+        logger.error(f"Ingestion failed for {file_path}: {e}")
+    finally:
+        ingestor.close()
+        if os.path.exists(file_path):
+            os.remove(file_path)
+
+@app.post("/ingest")
+async def ingest_document(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    flavor: str = Query("generic", enum=["trpg", "research", "generic"])
+):
+    """
+    Upload a document (PDF) for vision-based ingestion via Gemini-Distill.
+    Processing happens in the background.
+    """
+    import os
+    import shutil
+    import tempfile
+
+    if not file.filename.endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are supported for vision ingestion.")
+
+    # Save to temp file
+    temp_dir = tempfile.gettempdir()
+    file_path = os.path.join(temp_dir, f"ingest_{file.filename}")
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    # Queue background task
+    background_tasks.add_task(run_ingestion, file_path, flavor)
+
+    return {
+        "status": "queued",
+        "filename": file.filename,
+        "flavor": flavor,
+        "message": "Processing started in background. Check logs for completion."
+    }
 
 
 if __name__ == "__main__":
