@@ -220,8 +220,8 @@ async def stream_workflow(
                 # Current 'GM' agent has 'rules_lawyer' which we want to hide.
                 node_name = event.get("metadata", {}).get("langgraph_node", "")
                 
-                # Allow list approach
-                allowed_nodes = ["storyteller", "narrator", "agent", "responder", "writer_node"]
+                # Allow list approach - only nodes that produce user-facing content
+                allowed_nodes = ["storyteller", "narrator", "agent", "responder", "writer_node", "draft", "editor"]
                 
                 if node_name in allowed_nodes:
                     chunk = event["data"]["chunk"]
@@ -229,16 +229,27 @@ async def stream_workflow(
                         payload = json.dumps({"text_chunk": chunk.content})
                         yield f"event: message\ndata: {payload}\n\n"
             
-            # 2. Artifact Update (e.g. Drafts)
+            # 2. Artifact Update (e.g. Drafts, Outlines)
             elif kind == "on_chain_end":
                 data = event["data"].get("output")
                 if data and isinstance(data, dict):
-                    # Check for generic 'draft' or 'artifact' keys?
+                    # Check for draft or outline content
                     # GM Agent uses 'draft_narrative'
-                    if "draft_narrative" in data and data["draft_narrative"]:
+                    # Writer Agent uses 'draft_content' and 'current_outline'
+                    draft_content = data.get("draft_narrative") or data.get("draft_content")
+                    outline_content = data.get("current_outline")
+                    
+                    if draft_content:
                          payload = json.dumps({
                             "type": "draft", 
-                            "content": data["draft_narrative"]
+                            "content": draft_content
+                        })
+                         yield f"event: artifact_update\ndata: {payload}\n\n"
+                    
+                    if outline_content:
+                         payload = json.dumps({
+                            "type": "outline", 
+                            "content": outline_content
                         })
                          yield f"event: artifact_update\ndata: {payload}\n\n"
 

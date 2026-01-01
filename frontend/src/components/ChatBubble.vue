@@ -1,9 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { marked } from 'marked'
 import type { ChatMessage } from '@/composables/useChat'
 
-defineProps<{
+const props = defineProps<{
   message: ChatMessage
 }>()
+
+// Configure marked
+marked.setOptions({
+  breaks: true, // GFM line breaks
+  gfm: true,    // GitHub Flavored Markdown
+})
 
 // Agent names in Chinese for display
 const agentNames: Record<string, string> = {
@@ -23,28 +31,34 @@ const getAgentDisplayName = (name?: string) => {
   if (!name) return 'AI'
   return agentNames[name] || name
 }
+
+// Render content as Markdown
+const renderedContent = computed(() => {
+  if (!props.message.content) return ''
+  return marked.parse(props.message.content) as string
+})
 </script>
 
 <template>
   <div :class="[
-    'chat-bubble-enter-active max-w-[80%] p-3 rounded-2xl',
+    'animate-bloom max-w-[95%] p-5 rounded-3xl shadow-sm border transition-all duration-500',
     message.role === 'user'
-      ? 'ml-auto bg-logos-primary text-white rounded-br-sm'
-      : 'mr-auto bg-logos-surface-alt text-gray-100 rounded-bl-sm'
+      ? 'ml-auto bg-brand-primary text-brand-contrast rounded-br-none border-brand-primary shadow-lg shadow-brand-primary/10 font-medium'
+      : 'mr-auto bg-app-surface text-app-text border-app-border shadow-sm'
   ]">
     <!-- Role Label -->
-    <div class="text-xs opacity-60 mb-1">
+    <div class="text-[9px] uppercase tracking-[0.2em] mb-2 font-black opacity-40"
+      :class="message.role === 'user' ? 'text-app-bg' : 'text-brand-secondary'">
       {{ message.role === 'user' ? '你' : getAgentDisplayName(message.agentName) }}
     </div>
 
-    <!-- Content -->
-    <div class="whitespace-pre-wrap break-words">
-      {{ message.content }}
-    </div>
+    <!-- Content (Markdown Rendered) -->
+    <div class="prose prose-sm max-w-none break-words leading-relaxed transition-colors duration-500"
+      v-html="renderedContent"></div>
 
     <!-- Timestamp -->
-    <div class="text-xs opacity-40 mt-1 text-right">
-      {{ new Date(message.timestamp).toLocaleTimeString('zh-CN') }}
+    <div class="text-[9px] opacity-30 mt-3 text-right font-black italic tracking-tighter">
+      {{ new Date(message.timestamp).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }) }}
     </div>
   </div>
 </template>

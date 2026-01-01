@@ -112,13 +112,167 @@ Message: {message}"""
 
 
 # =============================================================================
+# Additional Prompts
+# =============================================================================
+
+NORMALIZER_PROMPT = """You are a Story Architect.
+Convert the user's raw input into a structured Scene Outline.
+
+Context Hint: {hint}
+
+Input: {input}
+
+Output JSON:
+{{
+    "title": "Scene Title",
+    "outline": "Detailed bullet points of what happens in the scene...",
+    "mood": "Atmosphere (e.g. Tense, Melancholic)",
+    "pov": "Point of View character"
+}}
+"""
+
+# =============================================================================
+# New Nodes
+# =============================================================================
+
+def create_structure_normalizer(llm: BaseChatModel, session: Session):
+    def normalizer(state: WriterState) -> WriterState:
+        from backend.database.models import StoryBible
+        
+        project_id = state.project_id or "default"
+        
+        # 1. Check if we have an existing master outline in DB
+        existing_outline = session.query(StoryBible).filter(
+            StoryBible.project_id == project_id,
+            StoryBible.entity_type == "master_outline"
+        ).first()
+        
+        if existing_outline:
+            state.current_outline = existing_outline.description
+        
+        # 2. Determine Input
+        user_input = ""
+        hint = ""
+        
+        if state.handoff_payload:
+            user_input = state.handoff_payload.get("user_raw", "")
+            hint = state.handoff_payload.get("system_hint", "")
+            
+            # Apply scopes from handoff if not set
+            if not state.active_scopes and state.handoff_payload.get("suggested_scopes"):
+                state.active_scopes = state.handoff_payload["suggested_scopes"]
+                
+            # Default strict mode for Writer
+            state.strict_mode = True
+        
+        if not user_input:
+            messages = state.messages
+            if messages:
+                user_input = messages[-1].content
+        
+        # 3. Check if user is requesting outline update or chapter
+        is_outline_request = any(kw in user_input.lower() for kw in ["大纲", "outline", "故事结构", "story structure"])
+        
+        # 4. Invoke LLM
+        response = llm.invoke([
+            SystemMessage(content=NORMALIZER_PROMPT.format(hint=hint, input=user_input))
+        ])
+        
+        try:
+            content = response.content.replace("```json", "").replace("```", "").strip()
+            data = json.loads(content)
+            
+            # Formatted outline string
+            formatted_outline = f"Title: {data.get('title')}\nMood: {data.get('mood')}\nPOV: {data.get('pov')}\n\nOutline:\n{data.get('outline')}"
+            
+            # 5. Persist master outline if this is an outline update request
+            if is_outline_request:
+                if existing_outline:
+                    existing_outline.description = formatted_outline
+                    existing_outline.entity_name = data.get('title', 'Master Outline')
+                else:
+                    new_outline = StoryBible(
+                        project_id=project_id,
+                        entity_type="master_outline",
+                        entity_name=data.get('title', 'Master Outline'),
+                        description=formatted_outline
+                    )
+                    session.add(new_outline)
+                session.commit()
+            
+            state.current_outline = formatted_outline
+            
+        except Exception:
+            # Fallback
+            state.current_outline = user_input
+            
+        return state
+    return normalizer
+
+
+def create_intent_classifier(llm: BaseChatModel):
+    def classifier(state: WriterState) -> WriterState:
+        # Check Handoff Payload first
+        if state.handoff_payload:
+            intent_class = state.handoff_payload.get("intent_classification", "")
+            if intent_class in ["gameplay", "writing", "research"]:
+                # Map standard intents to ACTION/INTERACTION
+                # Writing/Creative -> ACTION
+                state.critique_notes = "ACTION"
+                return state
+            # If "counseling" or other? Treat as INTERACTION?
+            
+        messages = state.messages
+        last_msg = messages[-1].content if messages else ""
+        
+        response = llm.invoke([
+            SystemMessage(content=INTENT_ROUTER_PROMPT.format(message=last_msg))
+        ])
+        
+        classification = response.content.strip().upper()
+        if "INTERACTION" in classification:
+            state.critique_notes = "INTERACTION"
+        elif "ACTION" in classification:
+            state.critique_notes = "ACTION"
+        else:
+            state.critique_notes = "INTERACTION"
+            
+        return state
+    return classifier
+
+
+def create_persona_chat(llm: BaseChatModel):
+    def persona_chat(state: WriterState) -> WriterState:
+        messages = state.messages
+        last_msg = messages[-1].content if messages else ""
+        
+        response = llm.invoke([
+            SystemMessage(content=WRITER_PERSONA_PROMPT.format(query=last_msg))
+        ])
+        
+        state.messages.append(AIMessage(content=response.content))
+        return state
+    return persona_chat
+
+
+def route_root(state: WriterState) -> str:
+    # Check 'critique_notes' which holds the classification
+    intent = state.critique_notes
+    if intent == "ACTION":
+        return "work"
+    return "chat"
+
+
+
+# =============================================================================
 # Helper
 # =============================================================================
 
 embedding_model = OpenAIEmbeddings(
     model="text-embedding-3-small",
     openai_api_key=os.getenv("OPENAI_API_KEY", "sk-litellm-master-key"),
-    openai_api_base=os.getenv("LITELLM_URL", "http://litellm:4000/v1")
+    openai_api_base=os.getenv("LITELLM_URL", "http://litellm:4000/v1"),
+    dimensions=768  # Match database Vector(768) schema
 )
 
 def retrieve_lore(query: str, project_id: str, session: Session, k: int = 3) -> str:
@@ -265,51 +419,6 @@ def create_lore_extractor(llm: BaseChatModel, session: Session):
         return state
     return lore_extractor
 
-def create_intent_classifier(llm: BaseChatModel):
-    def classifier(state: WriterState) -> WriterState:
-        # We reuse the same logic pattern, but WriterState has no 'rule_check_result'.
-        # We need a place to store intent. WriterState has 'critique_notes' or we can add a transient field?
-        # Let's override 'critique_notes' temporarily if needed, or rely on distinct return value in ConditionalEdge 
-        # (LangGraph ConditionalEdge functions get the state, so we need to store it in state).
-        # WriterState usually has 'current_outline'.
-        # Let's add a 'temp_intent' to the dict returned if we could... but we are using Pydantic-like object or TypedDict?
-        # WriterState is likely a Class or TypedDict. Let's check backend/graph/state.py or import.
-        # It is imported: `from backend.graph.state import WriterState`
-        # Assuming we can't easily change schema. Let's re-purpose 'critique_notes' as the "Scratchpad".
-        
-        messages = state.messages
-        last_msg = messages[-1].content if messages else ""
-        
-        response = llm.invoke([
-            SystemMessage(content=INTENT_ROUTER_PROMPT.format(message=last_msg))
-        ])
-        
-        classification = response.content.strip().upper()
-        state.critique_notes = classification # Abuse this field for routing
-        return state
-    return classifier
-
-def create_persona_chat(llm: BaseChatModel):
-    def persona_chat(state: WriterState) -> WriterState:
-        messages = state.messages
-        last_msg = messages[-1].content if messages else ""
-        
-        response = llm.invoke([
-            SystemMessage(content=WRITER_PERSONA_PROMPT.format(query=last_msg))
-        ])
-        
-        state.messages.append(AIMessage(content=response.content))
-        return state
-    return persona_chat
-
-def route_root(state: WriterState) -> str:
-    # Check 'critique_notes' which holds the classification
-    intent = state.critique_notes
-    if intent == "ACTION":
-        return "work"
-    return "chat"
-
-
 # =============================================================================
 # Graph
 # =============================================================================
@@ -319,15 +428,17 @@ def build_writer_agent(llm: BaseChatModel, session: Session, checkpointer: Optio
     Build Writer Agent Graph.
     
     Flow:
-    LoreRetriever -> Drafter -> Critic -> [Check]
-       -> (Needs Revision & Iter < 2) -> Reviser -> Drafter
-       -> (Approved or Max Iter) -> LoreExtractor -> END
+    Classifier -> [Action] -> Normalizer -> Retrieve -> Draft -> Editor -> Critic -> [Check]
+       -> (Revise) -> Reviser -> Draft
+       -> (Extract) -> Extract -> END
+    Classifier -> [Chat] -> PersonaChat -> END
     """
     
     graph = StateGraph(WriterState)
     
     # Nodes
     graph.add_node("classifier", create_intent_classifier(llm))
+    graph.add_node("normalizer", create_structure_normalizer(llm, session))
     graph.add_node("persona_chat", create_persona_chat(llm))
     
     graph.add_node("retrieve", create_lore_retriever(session))
@@ -344,7 +455,7 @@ def build_writer_agent(llm: BaseChatModel, session: Session, checkpointer: Optio
         "classifier",
         route_root,
         {
-            "work": "retrieve",
+            "work": "normalizer",  # Was 'retrieve'
             "chat": "persona_chat"
         }
     )
@@ -352,6 +463,7 @@ def build_writer_agent(llm: BaseChatModel, session: Session, checkpointer: Optio
     graph.add_edge("persona_chat", END)
     
     # Work Graph
+    graph.add_edge("normalizer", "retrieve")
     graph.add_edge("retrieve", "draft")
     graph.add_edge("draft", "editor")
     graph.add_edge("editor", "critic")

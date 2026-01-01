@@ -21,15 +21,14 @@ from backend.database.db_init import get_session
 embedding_model = OpenAIEmbeddings(
     model="text-embedding-3-small",
     openai_api_key=os.getenv("OPENAI_API_KEY", "sk-litellm-master-key"),
-    openai_api_base=os.getenv("LITELLM_URL", "http://litellm:4000/v1")
+    openai_api_base=os.getenv("LITELLM_URL", "http://litellm:4000/v1"),
+    dimensions=768  # Request 768 dimensions from model directly
 )
 
 
 def get_embedding(text: str) -> List[float]:
-    """Generate embedding for text using configured model.
-    Truncates to 768 dimensions for Matryoshka-style reduction."""
-    vec = embedding_model.embed_query(text)
-    return vec[:768]
+    """Generate embedding for text using configured model."""
+    return embedding_model.embed_query(text)
 
 
 def ingest_pdf(file_path: str, session: Session = None):

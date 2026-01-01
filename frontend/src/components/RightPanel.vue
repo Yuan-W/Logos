@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import { computed, markRaw } from 'vue'
 import { NTabs, NTabPane, NEmpty } from 'naive-ui'
-import { useAgentStore } from '@/stores/agent'
+import { useSessionStore } from '@/stores/session'
 import { useContextStore } from '@/stores/context'
 
 import CharacterSheet from './panels/CharacterSheet.vue'
 import NovelDraft from './panels/NovelDraft.vue'
 import CodeViewer from './panels/CodeViewer.vue'
 
-const agentStore = useAgentStore()
+const sessionStore = useSessionStore()
 const contextStore = useContextStore()
 
 // Dynamic panel mapping based on agent type
@@ -22,8 +22,10 @@ const panelComponents = {
   coach: null,
 }
 
+const currentAgent = computed(() => sessionStore.currentSession?.agent || 'gm')
+
 const activePanel = computed(() => {
-  return panelComponents[agentStore.currentAgent as keyof typeof panelComponents] || null
+  return panelComponents[currentAgent.value as keyof typeof panelComponents] || null
 })
 
 const panelTitle = computed(() => {
@@ -35,35 +37,38 @@ const panelTitle = computed(() => {
     coder: '代码查看器',
     researcher: '研究笔记',
   }
-  return titles[agentStore.currentAgent] || '上下文'
+  return titles[currentAgent.value] || '上下文'
 })
 </script>
 
 <template>
-  <div class="h-full flex flex-col bg-logos-surface/80">
+  <div
+    class="h-full flex flex-col bg-app-surface border-l border-app-border transition-all duration-500 overflow-hidden">
     <!-- Header -->
-    <div class="p-4 border-b border-gray-700/50">
-      <h3 class="text-sm font-semibold text-gray-300">
+    <header class="h-16 flex items-center px-6 border-b border-app-border glass shrink-0">
+      <h3 class="text-sm font-black uppercase tracking-widest text-brand-secondary">
         {{ panelTitle }}
       </h3>
-    </div>
+    </header>
 
     <!-- Dynamic Panel Content -->
-    <div class="flex-1 overflow-auto p-4">
-      <component v-if="activePanel" :is="activePanel" :data="contextStore.panelData" />
-      <NEmpty v-else description="该智能体没有上下文面板" class="h-full flex items-center justify-center" />
-    </div>
+    <main class="flex-1 overflow-auto p-6 animate-bloom">
+      <component v-if="activePanel" :is="activePanel" :data="(contextStore.panelData as any)" />
+      <div v-else class="h-full flex flex-col items-center justify-center opacity-30 text-center">
+        <NEmpty description="本智能体暂无交互面板" />
+      </div>
+    </main>
 
     <!-- Artifacts Tab (if any) -->
-    <div v-if="contextStore.artifacts.length" class="border-t border-gray-700/50">
-      <NTabs type="line" size="small" class="px-2">
+    <section v-if="contextStore.artifacts.length" class="border-t border-app-border bg-app-bg/50 shrink-0">
+      <NTabs type="line" size="small" class="px-4">
         <NTabPane v-for="artifact in contextStore.artifacts" :key="artifact.id" :name="artifact.id"
-          :tab="artifact.type === 'draft' ? '草稿' : artifact.type">
-          <div class="p-2 text-sm text-gray-400 max-h-32 overflow-auto">
+          :tab="artifact.type === 'draft' ? '📜 文稿' : '📦 ' + artifact.type">
+          <div class="p-4 text-xs font-medium leading-relaxed opacity-70 max-h-48 overflow-auto">
             {{ artifact.content }}
           </div>
         </NTabPane>
       </NTabs>
-    </div>
+    </section>
   </div>
 </template>

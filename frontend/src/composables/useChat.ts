@@ -1,5 +1,6 @@
-import { ref, readonly } from 'vue'
+import { ref, readonly, watch, computed } from 'vue'
 import { useContextStore } from '@/stores/context'
+import { useSessionStore } from '@/stores/session'
 
 export interface ChatMessage {
     id: string
@@ -9,12 +10,62 @@ export interface ChatMessage {
     timestamp: number
 }
 
+// Prefix for storing chat history per session
+const STORAGE_PREFIX = 'logos_chat_'
+
 export function useChat() {
     const messages = ref<ChatMessage[]>([])
     const isStreaming = ref(false)
-    const currentSessionId = ref(`session_${Date.now()}`)
 
     const contextStore = useContextStore()
+    const sessionStore = useSessionStore()
+
+    // Get current session ID from store
+    const currentSessionId = computed(() => sessionStore.currentSessionId)
+
+    /**
+     * Load messages for a specific session ID
+     */
+    const loadMessages = (sessionId: string) => {
+        try {
+            const stored = localStorage.getItem(`${STORAGE_PREFIX}${sessionId}`)
+            if (stored) {
+                messages.value = JSON.parse(stored)
+            } else {
+                messages.value = []
+            }
+        } catch (e) {
+            console.error('Failed to load messages:', e)
+            messages.value = []
+        }
+    }
+
+    /**
+     * Save messages for current session
+     */
+    const saveMessages = () => {
+        if (!currentSessionId.value) return
+        try {
+            localStorage.setItem(
+                `${STORAGE_PREFIX}${currentSessionId.value}`,
+                JSON.stringify(messages.value)
+            )
+        } catch (e) {
+            console.error('Failed to save messages:', e)
+        }
+    }
+
+    // Watch for session changes to reload messages
+    watch(currentSessionId, (newId) => {
+        if (newId) {
+            loadMessages(newId)
+        } else {
+            messages.value = []
+        }
+    }, { immediate: true })
+
+    // Watch for message changes to auto-save
+    watch(messages, saveMessages, { deep: true })
 
     /**
      * Generate a unique message ID
@@ -24,7 +75,13 @@ export function useChat() {
     /**
      * Send a message and stream the response via SSE
      */
-    const sendMessage = async (text: string, agent: string = 'gm') => {
+    const sendMessage = async (text: string, agentOverride?: string) => {
+        if (!currentSessionId.value || isStreaming.value) return
+
+        // Use agent from session, or override if provided
+        const session = sessionStore.currentSession
+        const currentAgent = agentOverride || session?.agent || 'gm'
+
         // 1. Add user message immediately
         const userMessage: ChatMessage = {
             id: generateId(),
@@ -34,12 +91,27 @@ export function useChat() {
         }
         messages.value.push(userMessage)
 
+        // Update session title if it's the first message and still default
+        if (session && messages.value.length === 1 && session.title === '新对话') {
+            sessionStore.updateSession(session.id, {
+                title: text.slice(0, 15) + (text.length > 15 ? '...' : '')
+            })
+        }
+
+        // Update session last modified
+        if (session) {
+            sessionStore.updateSession(session.id, {
+                lastModified: Date.now(),
+                agent: currentAgent // Update agent if changed
+            })
+        }
+
         // 2. Prepare assistant message placeholder
         const assistantMessage: ChatMessage = {
             id: generateId(),
             role: 'assistant',
             content: '',
-            agentName: agent.toUpperCase(),
+            agentName: currentAgent.toUpperCase(),
             timestamp: Date.now(),
         }
         messages.value.push(assistantMessage)
@@ -49,7 +121,7 @@ export function useChat() {
 
         const url = new URL('/stream/' + currentSessionId.value, window.location.origin)
         url.searchParams.set('message', text)
-        url.searchParams.set('role', agent)
+        url.searchParams.set('role', currentAgent)
         url.searchParams.set('user_id', 'user_default')
 
         try {
@@ -59,7 +131,6 @@ export function useChat() {
                 try {
                     const data = JSON.parse(event.data)
                     if (data.text_chunk) {
-                        // Append text to the last assistant message
                         const lastMsg = messages.value[messages.value.length - 1]
                         if (lastMsg.role === 'assistant') {
                             lastMsg.content += data.text_chunk
@@ -73,17 +144,21 @@ export function useChat() {
             eventSource.addEventListener('artifact_update', (event) => {
                 try {
                     const data = JSON.parse(event.data)
-                    // Update context store with artifact
                     contextStore.addArtifact({
                         id: `artifact_${Date.now()}`,
                         type: data.type || 'draft',
                         content: data.content,
                     })
 
-                    // If it's a draft, also update panel data
                     if (data.type === 'draft') {
                         contextStore.setPanelData({
-                            title: 'Latest Draft',
+                            title: '最新草稿',
+                            content: data.content,
+                            wordCount: data.content.split(/\s+/).length,
+                        })
+                    } else if (data.type === 'outline') {
+                        contextStore.setPanelData({
+                            title: '大纲',
                             content: data.content,
                             wordCount: data.content.split(/\s+/).length,
                         })
@@ -96,7 +171,6 @@ export function useChat() {
             eventSource.addEventListener('tool_start', (event) => {
                 try {
                     const data = JSON.parse(event.data)
-                    // Optionally show tool execution in UI
                     console.log('Tool started:', data.tool_name)
                 } catch (e) {
                     console.error('Failed to parse tool_start event:', e)
@@ -104,30 +178,25 @@ export function useChat() {
             })
 
             eventSource.addEventListener('error', () => {
-                console.error('SSE connection error')
                 eventSource.close()
                 isStreaming.value = false
             })
 
-            // Handle stream end (SSE doesn't have a built-in 'end' event, 
-            // we rely on server closing the connection)
             eventSource.addEventListener('close', () => {
                 isStreaming.value = false
             })
 
-            // Timeout fallback (if server doesn't close connection gracefully)
             setTimeout(() => {
                 if (eventSource.readyState !== EventSource.CLOSED) {
                     eventSource.close()
                     isStreaming.value = false
                 }
-            }, 120000) // 2 minute timeout
+            }, 120000)
 
         } catch (error) {
             console.error('Failed to connect to SSE:', error)
             isStreaming.value = false
 
-            // Add error message
             const lastMsg = messages.value[messages.value.length - 1]
             if (lastMsg.role === 'assistant' && !lastMsg.content) {
                 lastMsg.content = '⚠️ Connection error. Please try again.'
@@ -136,27 +205,18 @@ export function useChat() {
     }
 
     /**
-     * Clear all messages
+     * Clear messages for current session
      */
     const clearMessages = () => {
+        if (!currentSessionId.value) return
         messages.value = []
-        currentSessionId.value = `session_${Date.now()}`
-    }
-
-    /**
-     * Start a new session
-     */
-    const newSession = () => {
-        clearMessages()
-        contextStore.clearArtifacts()
+        localStorage.removeItem(`${STORAGE_PREFIX}${currentSessionId.value}`)
     }
 
     return {
         messages: readonly(messages),
         isStreaming: readonly(isStreaming),
-        currentSessionId: readonly(currentSessionId),
         sendMessage,
         clearMessages,
-        newSession,
     }
 }

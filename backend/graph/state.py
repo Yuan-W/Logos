@@ -140,6 +140,9 @@ class WriterState(BaseState):
     critique_notes: Annotated[str, overwrite] = Field(default="", description="Feedback from Critic")
     iteration_count: Annotated[int, overwrite] = Field(default=0, description="Reflexion loop counter")
     
+    # Ingress
+    handoff_payload: Annotated[dict[str, Any], overwrite] = Field(default_factory=dict, description="Context from Lobby")
+
     # Legacy/Extended fields
     plot_outline: Annotated[list[str], overwrite] = Field(default_factory=list, description="Full book outline")
     character_stats: Annotated[dict[str, Any], overwrite] = Field(default_factory=dict)
